@@ -1,218 +1,181 @@
-import React, { useEffect, useMemo, useState } from "react";
-
-const DEFAULT_BOOKS = [
-  { id: "healing-from-within", title: "Healing From Within", tag: "Relationships" },
-  { id: "inner-journey", title: "The Inner Journey", tag: "Self-awareness" },
-  { id: "loving-yourself-first", title: "Loving Yourself First", tag: "Self-worth" },
-  { id: "boundaries-in-love", title: "Boundaries in Love", tag: "Boundaries" },
-  { id: "emotional-intelligence-in-love", title: "Emotional Intelligence in Love", tag: "Emotions" },
-];
-
-function load(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-function save(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+:root{
+  --bg:#0b1020;
+  --card:#101a33;
+  --muted:#a9b2c7;
+  --text:#f3f6ff;
+  --line:rgba(255,255,255,.08);
+  --accent:#7c5cff;
+  --accent2:#ff7ab6;
 }
 
-export default function App() {
-  const [books] = useState(DEFAULT_BOOKS);
-
-  const [xp, setXp] = useState(() => load("irl_xp", 0));
-  const [streak, setStreak] = useState(() => load("irl_streak", 0));
-  const [lastSessionDate, setLastSessionDate] = useState(() => load("irl_lastSessionDate", null));
-
-  const [selectedBookId, setSelectedBookId] = useState(() => load("irl_selectedBookId", books[0]?.id));
-  const [minutes, setMinutes] = useState(20);
-
-  const [journalText, setJournalText] = useState(() => load("irl_journalDraft", ""));
-  const [journalEntries, setJournalEntries] = useState(() => load("irl_journalEntries", []));
-
-  useEffect(() => save("irl_xp", xp), [xp]);
-  useEffect(() => save("irl_streak", streak), [streak]);
-  useEffect(() => save("irl_lastSessionDate", lastSessionDate), [lastSessionDate]);
-  useEffect(() => save("irl_selectedBookId", selectedBookId), [selectedBookId]);
-  useEffect(() => save("irl_journalDraft", journalText), [journalText]);
-  useEffect(() => save("irl_journalEntries", journalEntries), [journalEntries]);
-
-  const level = useMemo(() => Math.floor(xp / 100) + 1, [xp]);
-  const progressToNext = useMemo(() => xp % 100, [xp]);
-
-  function completeReadingSession() {
-    // XP rule (simple + addictive):
-    // 1 minute = 2 XP, capped at 120 XP per session to stop “gaming”
-    const earned = Math.min(minutes * 2, 120);
-    setXp((v) => v + earned);
-
-    // Streak rule:
-    // If last session was yesterday -> +1
-    // If last session was today -> no change
-    // Else -> reset to 1
-    const today = new Date();
-    const yyyyMmDd = today.toISOString().slice(0, 10);
-
-    if (!lastSessionDate) {
-      setStreak(1);
-    } else if (lastSessionDate === yyyyMmDd) {
-      // same day, no change
-    } else {
-      const prev = new Date(lastSessionDate);
-      const diffDays = Math.round((today - prev) / (1000 * 60 * 60 * 24));
-      setStreak(diffDays === 1 ? streak + 1 : 1);
-    }
-
-    setLastSessionDate(yyyyMmDd);
-    alert(`Nice. You earned ${earned} XP 💅`);
-  }
-
-  function addJournalEntry() {
-    const trimmed = journalText.trim();
-    if (!trimmed) return;
-
-    const entry = {
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      bookId: selectedBookId,
-      text: trimmed,
-    };
-    setJournalEntries([entry, ...journalEntries]);
-    setJournalText("");
-  }
-
-  const selectedBook = books.find((b) => b.id === selectedBookId);
-
-  return (
-    <div className="app">
-      <header className="topbar">
-        <div>
-          <div className="brand">🚀 Inner Rebuild Library</div>
-          <div className="sub">Gamified ebook learning + journalling</div>
-        </div>
-
-        <div className="stats">
-          <div className="stat">
-            <div className="statNum">{level}</div>
-            <div className="statLabel">Level</div>
-          </div>
-          <div className="stat">
-            <div className="statNum">{xp}</div>
-            <div className="statLabel">XP</div>
-          </div>
-          <div className="stat">
-            <div className="statNum">{streak}</div>
-            <div className="statLabel">Streak</div>
-          </div>
-        </div>
-      </header>
-
-      <main className="grid">
-        {/* Progress card */}
-        <section className="card">
-          <h2>Progress</h2>
-          <p className="muted">
-            {progressToNext}/100 XP to the next level. Keep stacking tiny wins.
-          </p>
-          <div className="bar">
-            <div className="barFill" style={{ width: `${progressToNext}%` }} />
-          </div>
-
-          <div className="row">
-            <div className="pill">🏅 Badges: coming next</div>
-            <div className="pill">🎯 Goals: coming next</div>
-          </div>
-        </section>
-
-        {/* Library card */}
-        <section className="card">
-          <h2>Your Library</h2>
-          <p className="muted">Pick a book, then log a timed read session.</p>
-
-          <div className="books">
-            {books.map((b) => (
-              <button
-                key={b.id}
-                className={"book" + (b.id === selectedBookId ? " active" : "")}
-                onClick={() => setSelectedBookId(b.id)}
-              >
-                <div className="bookTitle">{b.title}</div>
-                <div className="bookTag">{b.tag}</div>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* Reading session */}
-        <section className="card">
-          <h2>Reading Session</h2>
-          <p className="muted">
-            Book: <strong>{selectedBook?.title}</strong>
-          </p>
-
-          <div className="row">
-            <label className="field">
-              Minutes
-              <input
-                type="number"
-                min="5"
-                max="120"
-                value={minutes}
-                onChange={(e) => setMinutes(Number(e.target.value))}
-              />
-            </label>
-
-            <button className="primary" onClick={completeReadingSession}>
-              Complete Session (+XP)
-            </button>
-          </div>
-
-          <div className="hint">
-            XP rule: 2 XP/min (cap 120 XP). Streak updates when you log a session.
-          </div>
-        </section>
-
-        {/* Journal */}
-        <section className="card">
-          <h2>Journal</h2>
-          <p className="muted">Reflection = transformation. (Also: retention.)</p>
-
-          <div className="prompt">
-            Prompt: What did you learn today that changes how you’ll show up in love?
-          </div>
-
-          <textarea
-            className="textarea"
-            value={journalText}
-            onChange={(e) => setJournalText(e.target.value)}
-            placeholder="Type your reflection..."
-          />
-
-          <div className="row">
-            <button className="primary" onClick={addJournalEntry}>
-              Save Entry
-            </button>
-            <div className="muted">{journalEntries.length} entries</div>
-          </div>
-
-          <div className="entries">
-            {journalEntries.slice(0, 5).map((e) => (
-              <div className="entry" key={e.id}>
-                <div className="entryMeta">
-                  <span>{new Date(e.createdAt).toLocaleString()}</span>
-                  <span className="dot">•</span>
-                  <span>{books.find((b) => b.id === e.bookId)?.title}</span>
-                </div>
-                <div className="entryText">{e.text}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-      </main>
-    </div>
-  );
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background: radial-gradient(1200px 700px at 20% 10%, rgba(124,92,255,.22), transparent 60%),
+              radial-gradient(900px 600px at 80% 20%, rgba(255,122,182,.18), transparent 55%),
+              var(--bg);
+  color:var(--text);
 }
 
+.appShell{max-width:1100px;margin:0 auto;padding:24px 16px 40px}
+
+.topbar{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+  padding:18px 18px;margin-bottom:18px;
+  border:1px solid var(--line);border-radius:16px;
+  background: linear-gradient(180deg, rgba(16,26,51,.9), rgba(16,26,51,.7));
+}
+
+.brand{font-weight:800;letter-spacing:.2px;font-size:20px}
+.sub{color:var(--muted);margin-top:6px;font-size:13px}
+
+.goalBox{display:flex;flex-direction:column;gap:6px;min-width:170px}
+.goalLabel{font-size:12px;color:var(--muted)}
+.goalInput{
+  width:100%;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background: rgba(0,0,0,.2);
+  color:var(--text);
+  outline:none;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns: 1.1fr .9fr;
+  gap:14px;
+}
+@media (max-width: 920px){
+  .grid{grid-template-columns:1fr}
+}
+
+.card{
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:16px;
+  background: rgba(16,26,51,.65);
+}
+
+.cardHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.card h2{margin:0;font-size:16px}
+
+.pill{
+  font-size:12px;color:var(--muted);
+  border:1px solid var(--line);
+  padding:6px 10px;border-radius:999px;
+  background: rgba(0,0,0,.18);
+}
+
+.primary, .secondary, .ghost{
+  border-radius:12px;
+  padding:10px 12px;
+  border:1px solid var(--line);
+  cursor:pointer;
+  font-weight:600;
+}
+.primary{
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border:none;
+  color:white;
+}
+.secondary{
+  background: rgba(255,255,255,.06);
+  color:var(--text);
+}
+.ghost{
+  background: transparent;
+  color: var(--muted);
+}
+.primary:hover,.secondary:hover{filter:brightness(1.05)}
+.ghost:hover{color:var(--text)}
+
+.hint{color:var(--muted);font-size:12px;margin-top:8px}
+.hint.small{font-size:11px}
+
+.progressRow{display:flex;gap:16px;align-items:center}
+@media (max-width: 520px){.progressRow{flex-direction:column;align-items:stretch}}
+
+.ring{
+  width:120px;height:120px;border-radius:999px;
+  background:
+    conic-gradient(from 90deg, rgba(124,92,255,1) calc(var(--p)*1%), rgba(255,255,255,.08) 0);
+  display:grid;place-items:center;
+}
+.ringInner{
+  width:92px;height:92px;border-radius:999px;
+  background: rgba(11,16,32,.75);
+  border:1px solid var(--line);
+  display:grid;place-items:center;
+  text-align:center;
+}
+.ringPct{font-size:22px;font-weight:800}
+.ringHint{font-size:11px;color:var(--muted);margin-top:2px}
+
+.todayMeta{display:flex;flex-direction:column;gap:10px;flex:1}
+.metric{display:flex;gap:10px;align-items:baseline}
+.metricNum{font-size:20px;font-weight:800}
+.metricLabel{color:var(--muted);font-size:12px}
+
+.taskList{margin-top:12px;display:grid;gap:10px}
+.task{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:12px;border:1px solid var(--line);
+  background: rgba(0,0,0,.18);
+}
+.task.done{opacity:.7}
+.taskLeft{display:flex;align-items:center;gap:10px;flex:1}
+.taskTitle{font-weight:700}
+.taskMins{font-size:12px;color:var(--muted);border:1px solid var(--line);padding:4px 8px;border-radius:999px}
+
+.bookGrid{display:grid;grid-template-columns:1fr;gap:12px}
+.book{
+  border:1px solid var(--line);
+  background: rgba(0,0,0,.18);
+  border-radius:14px;
+  padding:12px;
+}
+.bookTop{display:flex;justify-content:space-between;gap:10px}
+.bookTitle{font-weight:800}
+.bookTag{font-size:12px;color:var(--muted)}
+.bookBottom{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+.price{font-weight:800}
+
+.ownedList{display:grid;gap:10px}
+.owned{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:10px 12px;border:1px solid var(--line);border-radius:12px;background: rgba(0,0,0,.18);
+}
+.ownedTitle{font-weight:800}
+
+.journalBox{display:grid;gap:10px;margin-bottom:12px}
+.textarea{
+  width:100%;
+  border-radius:14px;
+  border:1px solid var(--line);
+  background: rgba(0,0,0,.18);
+  color: var(--text);
+  padding:12px;
+  outline:none;
+  resize: vertical;
+}
+
+.entries{display:grid;gap:10px}
+.entry{
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px 12px;
+  background: rgba(0,0,0,.18);
+}
+.entryMeta{color:var(--muted);font-size:11px;margin-bottom:6px}
+.entryText{white-space:pre-wrap}
+
+.empty{color:var(--muted);font-size:13px;padding:10px 0}
+
+.footer{
+  margin-top:14px;
+  color:var(--muted);
+  font-size:12px;
+  text-align:center;
+}
