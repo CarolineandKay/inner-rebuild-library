@@ -1,6 +1,49 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "./index.css";
+import { useEffect } from "react";
 
+function slugify(s = "") {
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+function addOwnedBook(bookId) {
+  const key = "irl_owned_books";
+  const existing = JSON.parse(localStorage.getItem(key) || "[]");
+  if (!existing.includes(bookId)) {
+    existing.push(bookId);
+    localStorage.setItem(key, JSON.stringify(existing));
+  }
+}
+
+function App() {
+  // ...your existing state/hooks...
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const unlock = params.get("unlock");
+    if (!unlock) return;
+
+    // Save ownership locally (v1)
+    addOwnedBook(unlock);
+
+    // Clean the URL so it doesn't keep unlocking on refresh
+    params.delete("unlock");
+    const newUrl =
+      window.location.pathname +
+      (params.toString() ? `?${params.toString()}` : "") +
+      window.location.hash;
+
+    window.history.replaceState({}, "", newUrl);
+
+    // Optional: tiny feedback
+    alert(`Unlocked: ${unlock.replace(/-/g, " ")}`);
+  }, []);
+=
 const DEFAULT_BOOKS = [
   { id: "healing-from-within", title: "Healing From Within" },
   { id: "inner-journey", title: "The Inner Journey" },
